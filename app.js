@@ -3,7 +3,7 @@
 // Data: shared/arsten-activities.js (the list _AM_Docs/Activities/activities.json, photos _AM_Docs/Activities/Photos/<day>/).
 // Who: admin and the GC side (00_ADMIN, 02.GENERAL CONTRACTOR, 02.1 PM), app "activities" in shared/arsten-access.js.
 // Writing needs ArstenAccess.canWrite (a Connect project ADMIN outside those groups only reads).
-// The client never opens this panel: Статус publishes the dated entries ticked "за клиента" (text + date only, no photos).
+// The client never opens this panel: Статус publishes the dated entries ticked "за клиента" (text, date and up to 6 photos, copied to _AM_Docs/Client/Photos).
 // Every save reads the list again first and applies just that one change (arsten-activities.js change).
 (() => {
   "use strict";
@@ -14,8 +14,8 @@
 
   const T = {
     title: ["Дейности", "Site activities"],
-    hint: ["Работи и събития извън модела – доставки, разбиване, временни съоръжения – със снимки. Записите с дата и „за клиента“ отиват при клиента при следващото „Публикувай за клиента“ в Статус (само текст и дата, без снимки). Без дата = предстои, само вътрешно.",
-      "Work and events outside the model – deliveries, demolition, temporary works – with photos. Entries with a date and \"for the client\" reach the client at the next \"Publish for the client\" in Status (text and date only, no photos). No date = planned, internal only."],
+    hint: ["Работи и събития извън модела – доставки, разбиване, временни съоръжения – със снимки. Записите с дата и „за клиента“ отиват при клиента при следващото „Публикувай за клиента“ в Статус (текст, дата и до 6 снимки на запис). Без дата = предстои, само вътрешно.",
+      "Work and events outside the model – deliveries, demolition, temporary works – with photos. Entries with a date and \"for the client\" reach the client at the next \"Publish for the client\" in Status (text, date and up to 6 photos per entry). No date = planned, internal only."],
     textLbl: ["Какво е направено", "What was done"], ph: ["напр. Доставени допълнителни тоалетни на обекта", "e.g. Additional site toilets delivered"],
     dateLbl: ["Дата (изтрийте я за „предстои“)", "Date (clear it for \"planned\")"],
     forClient: ["за клиента", "for the client"], photos: ["Снимки", "Photos"], photosN: ["снимки избрани", "photos chosen"], photos1: ["снимка избрана", "photo chosen"],
