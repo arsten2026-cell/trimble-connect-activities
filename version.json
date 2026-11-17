@@ -1,0 +1,19 @@
+{
+  "panel": "activities",
+  "repo": "arsten2026-cell/trimble-connect-activities",
+  "id": "6ee240d633",
+  "built": "2026-11-17T21:10:51.624Z",
+  "files": {
+    "app.js": "2c7036b69c",
+    "arsten-perf.js": "21f7454938",
+    "arsten-diag.js": "bb0c6351fe",
+    "arsten-i18n.js": "de006467e2",
+    "arsten-access.js": "253829d007",
+    "arsten-backup.js": "032cc821bb",
+    "arsten-photos.js": "fd69e17caf",
+    "arsten-activities.js": "a3cf06e68b",
+    "manifest.json": "cfa112e0c2",
+    "icon.svg": "9e34482970",
+    "index.html": "21ea0faa87"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Дейности / Site activities (Arsten / Multiplan)",
+  "url": "https://arsten2026-cell.github.io/trimble-connect-activities/index.html",
+  "icon": "https://arsten2026-cell.github.io/trimble-connect-activities/icon.svg",
+  "description": "Site activities that are not in the model (deliveries, demolition, temporary works) with photos, by week. Entries marked for the client go into the weekly report published from Status.",
+  "extensionType": ["3dviewer"]
+}

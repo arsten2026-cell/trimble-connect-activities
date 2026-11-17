@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дейности</title>
+<style>
+  :root { --bg:#f7f5f0; --ink:#1f1f1f; --muted:#6b6b6b; --line:#d9d5cc; --accent:#E37424; --panel:#fff; --bad:#b3261e; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; padding:12px; background:var(--bg); color:var(--ink); font:13px/1.45 Ubuntu, "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:15px; margin:0; font-weight:600; }
+  h2 { font-size:12px; margin:16px 0 6px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .top { display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+  .top h1 { margin-right:auto; }
+  .status { font-size:12px; color:var(--muted); margin-bottom:8px; min-height:1.4em; }
+  .status.bad { color:var(--bad); }
+  .box { background:var(--panel); border:1px solid var(--line); padding:10px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0; }
+  button { font:inherit; padding:6px 10px; border:1px solid var(--ink); background:var(--ink); color:#fff; cursor:pointer; border-radius:0; min-height:28px; }
+  button.secondary { background:transparent; color:var(--ink); border-color:var(--line); }
+  button.small { padding:2px 8px; font-size:12px; min-height:24px; }
+  button:disabled { opacity:.5; cursor:default; }
+  select { font:inherit; font-size:12px; padding:2px 4px; border:1px solid var(--line); background:#fff; border-radius:0; }
+  label.chk { display:inline-flex; align-items:center; gap:5px; font-size:12px; }
+  .sub { font-size:11px; color:var(--muted); }
+  .fld { display:block; font-size:12px; color:var(--muted); margin:6px 0 3px; }
+  input[type=text], input[type=date] { font:inherit; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; }
+  input[type=text] { width:100%; }
+  #form.editing { border-color:var(--accent); background:#FFF8F2; }
+  .photoPick { display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; border:1px dashed var(--line); padding:4px 8px; background:#fff; }
+  .photoPick input { display:none; }
+  /* the list, by week */
+  .wk { margin-top:14px; }
+  .wk h2 { margin:0 0 6px; }
+  .act { list-style:none; margin:0; padding:0; }
+  .act > li { background:var(--panel); border:1px solid var(--line); border-top:0; padding:8px 10px; }
+  .act > li:first-child { border-top:1px solid var(--line); }
+  .act > li.open .d { color:var(--accent); }
+  .act > li.editing { background:#FFF4EA; }
+  .act .hd { display:flex; gap:8px; align-items:baseline; }
+  .act .d { flex:none; width:78px; font-variant-numeric:tabular-nums; color:var(--muted); font-size:12px; }
+  .act .txt { flex:1; min-width:0; overflow-wrap:anywhere; }
+  .act .acts { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0 86px; }
+  .act .acts button { padding:2px 8px; font-size:11px; min-height:24px; }
+  .act .acts button[aria-pressed=true] { border-color:var(--ink); }
+  .thumbs { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0 86px; }
+  .thumb { position:relative; width:72px; height:72px; background:#ece8df; border:1px solid var(--line); }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
+  .thumb button { position:absolute; top:-6px; right:-6px; min-width:24px; min-height:24px; padding:0; line-height:22px; font-size:14px; background:#fff; }
+  @media (max-width:360px) { .act .acts, .thumbs { margin-left:0; } .act .d { width:70px; } }
+  /* full-size photo */
+  #viewer { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #viewer img { max-width:96vw; max-height:90vh; }
+  #viewer button { position:absolute; top:8px; right:8px; min-height:36px; padding:6px 14px; }
+</style>
+</head>
+<body>
+<div class="top"><h1 id="title">Дейности</h1>
+  <select id="selLang" title="Language / Език"><option value="bg">BG</option><option value="en">EN</option></select></div>
+<button type="button" class="small secondary" data-arsten-diag style="float:right;margin-left:6px">Копирай диагностика</button>
+<div id="status" class="status">Trimble Connect…</div>
+
+<div id="main" hidden>
+  <div class="sub" id="hint"></div>
+  <div class="box" id="form" style="margin-top:8px">
+    <label class="fld" for="inText" id="lblText"></label>
+    <input type="text" id="inText" maxlength="200">
+    <label class="fld" for="inDate" id="lblDate"></label>
+    <div class="bar" style="margin-top:0">
+      <input type="date" id="inDate">
+      <label class="chk"><input type="checkbox" id="chkClient" checked> <span id="lblClient"></span></label>
+      <label class="photoPick" id="lblPhotos"><input type="file" id="inPhotos" accept="image/*" multiple><span id="txtPhotos"></span></label>
+    </div>
+    <div class="sub" id="pickInfo"></div>
+    <div class="bar" style="margin-bottom:0"><button id="btnSave"></button><button id="btnCancel" class="secondary" hidden></button></div>
+  </div>
+  <input type="file" id="inMore" accept="image/*" multiple hidden>
+  <div id="list"></div>
+  <div class="bar"><button id="btnOlder" class="small secondary" hidden></button></div>
+</div>
+<div id="viewer" hidden><img id="viewerImg" alt=""><button id="btnViewerClose" class="small secondary" style="background:#fff"></button></div>
+
+<script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
+<script src="arsten-perf.js?v=21f7454938"></script>
+<script src="arsten-diag.js?v=bb0c6351fe"></script>
+<script src="arsten-i18n.js?v=de006467e2"></script>
+<script src="arsten-access.js?v=253829d007"></script>
+<script src="arsten-backup.js?v=032cc821bb"></script>
+<script src="arsten-photos.js?v=fd69e17caf"></script>
+<script src="arsten-activities.js?v=a3cf06e68b"></script>
+<script src="app.js?v=2c7036b69c"></script>
+</body>
+</html>
