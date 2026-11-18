@@ -141,6 +141,8 @@
         <div><label class="fld" for="inPage" id="lblPage"></label><input type="text" id="inPage" inputmode="numeric" maxlength="4" autocomplete="off"></div>
       </div>
       <label class="fld" for="inWhere" id="lblWhere"></label><input type="text" id="inWhere" maxlength="120" autocomplete="off">
+      <label class="fld" for="selTodo" id="lblTodo"></label>
+      <div class="bar" style="margin:0;flex-wrap:nowrap"><select id="selTodo" style="flex:1;min-width:0"></select><button type="button" id="btnTodoReload" class="small secondary"></button></div>
       <label class="fld" for="inLink" id="lblLink"></label><input type="text" id="inLink" inputmode="url" maxlength="500" autocomplete="off" spellcheck="false">
       <div class="sub" id="linkHint"></div>
     </div>
@@ -156,6 +158,7 @@
   <input type="file" id="inMore" accept="image/*" multiple hidden>
   <div class="bar" id="viewBar" hidden><button type="button" id="btnViewAll" class="small"></button><button type="button" id="btnViewExtra" class="small secondary"></button></div>
   <div id="regBar" hidden>
+    <div class="bar" id="regOrphans" hidden></div>
     <div class="bar" id="regChips"></div>
     <div class="sub" id="regSum"></div>
     <div class="bar"><button type="button" id="btnCsv" class="small secondary"></button><button type="button" id="btnPrint" class="small secondary"></button></div>
@@ -174,7 +177,7 @@
 <script src="arsten-access.js?v=fad565fcbe"></script>
 <script src="arsten-backup.js?v=6c54dfe763"></script>
 <script src="arsten-photos.js?v=58db357146"></script>
-<script src="arsten-activities.js?v=c5cafe4643"></script>
-<script src="app.js?v=ee4d28e8b7"></script>
+<script src="arsten-activities.js?v=61c84547b9"></script>
+<script src="app.js?v=2687e87833"></script>
 </body>
 </html>

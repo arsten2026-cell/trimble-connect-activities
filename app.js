@@ -77,9 +77,13 @@
     textLblX: ["Каква допълнителна работа", "What additional work"], phX: ["напр. Изкоп за кабел извън проекта", "e.g. Cable trench outside the design"],
     qtyLbl: ["Количество", "Quantity"], unitLbl: ["Мярка", "Unit"], sheetLbl: ["Чертеж", "Drawing"], sheetPh: ["напр. ST-DR-0101 R02", "e.g. ST-DR-0101 R02"],
     pageLbl: ["Стр.", "Page"], whereLbl: ["Място", "Place"], wherePh: ["напр. ос А-3, кота +3.20", "e.g. grid A-3, level +3.20"],
-    linkLbl: ["Връзка от Connect (по желание)", "Link from Connect (optional)"], linkPh: ["https://web.connect.trimble.com/…", "https://web.connect.trimble.com/…"],
-    linkHint: ["Отбележете мястото на чертежа в Connect (облак + текст), запазете изглед или задача „ДР – …“ и поставете връзката ѝ тук.",
-      "Mark the place on the drawing in Connect (cloud + text), save a view or a ToDo \"ДР – …\" and paste its share link here."],
+    todoLbl: ["Задача в Connect с отбелязания чертеж", "Connect ToDo with the marked drawing"], todoNone: ["– без задача –", "– no ToDo –"],
+    todoLoading: ["зареждане на задачите…", "loading the ToDos…"], todoFail: ["задачите не се четат", "the ToDos cannot be read"], todoReload: ["Обнови задачите", "Reload the ToDos"],
+    todoMeta: ["задача", "ToDo"], openTodoT: ["Отваря задачата с отбелязания чертеж в Connect (нов раздел)", "Opens the ToDo with the marked drawing in Connect (new tab)"],
+    orphans: ["Задачи „ДР“ в Connect без запис тук:", "\"ДР\" ToDos in Connect not in the register:"], adopt: ["Добави", "Add"], adoptT: ["Добави тази задача като допълнителна работа", "Add this ToDo as an additional work"],
+    linkLbl: ["Или връзка към изглед в Connect (по желание)", "Or a link to a Connect view (optional)"], linkPh: ["https://web.connect.trimble.com/…", "https://web.connect.trimble.com/…"],
+    linkHint: ["Отворете PDF чертежа от Data (не от 3D), оградете мястото (облак + текст) и го запазете като задача (ToDo) „ДР – …“. После я изберете тук.",
+      "Open the PDF drawing from Data (not the 3D viewer), mark the place (cloud + text) and save it as a ToDo \"ДР – …\". Then pick it here."],
     clientHintX: ["Допълнителна работа отива при клиента само ако е отметната и изпълнена – само номер и текст.",
       "An additional work goes to the client only when ticked and done – number and text only."],
     badQty: ["Количеството трябва да е число ≥ 0.", "The quantity must be a number ≥ 0."],
@@ -100,7 +104,7 @@
     regTitle: ["Регистър на допълнителните работи", "Register of additional works"], page: ["стр.", "p."],
     hNo: ["№", "No"], hDate: ["Дата", "Date"], hWork: ["Работа", "Work"], hStatus: ["Състояние", "Status"], hSince: ["От", "Since"],
     hQty: ["Количество", "Quantity"], hUnit: ["Мярка", "Unit"], hSheet: ["Чертеж", "Drawing"], hPage: ["Стр.", "Page"], hWhere: ["Място", "Place"],
-    hLink: ["Връзка", "Link"], hClient: ["За клиента", "For the client"], yes: ["да", "yes"], no: ["не", "no"],
+    hLink: ["Връзка", "Link"], hTodo: ["Задача", "ToDo"], hClient: ["За клиента", "For the client"], yes: ["да", "yes"], no: ["не", "no"],
     badUnit: ["Изберете мярка от списъка.", "Pick a unit from the list."],
     stale: ["Някой друг го промени междувременно – списъкът е обновен, вижте и опитайте пак.", "Someone else changed it meanwhile – the list is refreshed; check it and try again."], badPage: ["Страницата е число от 1 до 9999.", "The page is a number from 1 to 9999."],
     dateLblX: ["Дата на изпълнение", "Date done"], plannedChkX: ["Още не е изпълнена", "Not done yet"],
@@ -166,6 +170,7 @@
     checking: null,                                               // the entry whose client copies are being looked up (Скрий от клиента)
     kind: "act",                                                  // the form adds an activity ("act") or an additional work ("extra")
     view: "all", stFilter: "",                                    // the list: all entries by week, or the register of additional works (one status or all)
+    todos: null, todosErr: null, todosBusy: false,                // the project's Connect ToDos [{id, no, title, status}] for the ДР form (read on demand)
   };
   let tokens = null, core = null;
   const getToken = (refresh) => tokens.getToken(refresh);
@@ -196,7 +201,7 @@
     $("btnSave").textContent = t(state.editing ? "save" : "add");
     $("btnCancel").textContent = t("cancel"); $("btnCancel").hidden = !state.editing;
     const busy = state.busy || !state.loaded;
-    for (const id of ["btnSave", "inText", "inDate", "chkPlanned", "chkClient", "inPhotos", "btnCancel", "inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink"]) $(id).disabled = id === "btnSave" ? busy : state.busy;
+    for (const id of ["btnSave", "inText", "inDate", "chkPlanned", "chkClient", "inPhotos", "btnCancel", "inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink", "selTodo"]) $(id).disabled = id === "btnSave" ? busy : state.busy;
     if ($("chkPlanned").checked) $("inDate").disabled = true;   // planned = no date (clearing a native date field is fiddly on a phone)
     $("btnViewerClose").textContent = t("close");
     const rb = $("btnRefresh");
@@ -214,6 +219,7 @@
     $("lblPage").textContent = t("pageLbl"); $("lblWhere").textContent = t("whereLbl"); $("lblLink").textContent = t("linkLbl");
     $("inSheet").placeholder = t("sheetPh"); $("inWhere").placeholder = t("wherePh"); $("inLink").placeholder = t("linkPh");
     $("linkHint").textContent = t("linkHint");
+    renderTodoSelect();
     const u = $("selUnit").value || "";
     $("selUnit").innerHTML = `<option value="">–</option>` + Object.keys(AV.UNITS || {}).map((k) => `<option value="${esc(k)}">${esc(unitText(k))}</option>`).join("");
     $("selUnit").value = u;
@@ -233,6 +239,56 @@
     $("regSum").textContent = sums.length ? `${t("doneSum")}: ${sums.join(", ")}` : "";
     $("btnCsv").textContent = t("csv"); $("btnPrint").textContent = t("print");
     $("btnCsv").disabled = $("btnPrint").disabled = !n;
+    renderOrphans();
+  }
+  // ---------- Connect ToDos (live test 18.11.2026: a ToDo has no share link; the panel lists them instead) ----------
+  /** The address Connect opens a ToDo at (checked live: web.connect.trimble.com/projects/<project>/todo/<id>). */
+  const todoUrl = (id) => `https://web.connect.trimble.com/projects/${encodeURIComponent((state.project && state.project.id) || "")}/todo/${encodeURIComponent(id)}`;
+  const DR_TITLE = /^\s*ДР(?![\p{L}\p{N}])/iu;   // not \b: it is ASCII-only and never matches after Cyrillic
+  /** Read the project's ToDos once (and on "Обнови задачите"): [{id, no, title, status}], "ДР…" first, open before closed. */
+  async function loadTodos(force) {
+    if (state.todosBusy || (state.todos && !force) || !state.project) return;
+    state.todosBusy = true; state.todosErr = null; renderTodoSelect();
+    try {
+      // Range: the legacy Core lists page (206) without it; 1000 ToDos in one answer, as arsten-access.js asks for members
+      const r = await coreFor().req(`todos?projectId=${encodeURIComponent(state.project.id)}`, "GET", undefined, { headers: { Range: "items=0-999" } });
+      const list = (Array.isArray(r) ? r : (r && (r.items || r.data)) || []).filter((x) => x && /^[A-Za-z0-9_-]{1,80}$/.test(String(x.id || "")));
+      const st = (x) => String((x.objectStatusDto && x.objectStatusDto.label) || x.status || "").toUpperCase();
+      state.todos = list.map((x) => ({ id: String(x.id), no: String(x.label || "").slice(0, 30), title: String(x.title || "").slice(0, 200), status: st(x) }))
+        .sort((a, b) => (DR_TITLE.test(b.title) - DR_TITLE.test(a.title)) || ((a.status === "CLOSED") - (b.status === "CLOSED")) || b.no.localeCompare(a.no, undefined, { numeric: true }));
+    } catch (e) { console.warn("todos not read", e); state.todosErr = e; }
+    finally { state.todosBusy = false; render(); }
+  }
+  /** The ToDo list of the ДР form (the entry's own ToDo stays listed while it is edited, even when closed / not read). */
+  function renderTodoSelect() {
+    const sel = $("selTodo");
+    if (!sel) return;
+    // the chosen ToDo is kept in state.todoCur, not read back from the <select>: a browser drops a value that has no
+    // <option> yet (a closed ToDo, ToDos still loading or not readable), and the next save then unlinked it (review)
+    const cur = state.todoCur || "", list = (state.todos || []).filter((x) => x.status !== "CLOSED" || x.id === cur);
+    if (cur && !list.some((x) => x.id === cur)) list.unshift({ id: cur, no: state.todoNoKeep || "", title: "" });
+    const first = state.todosBusy ? t("todoLoading") : state.todosErr ? t("todoFail") : t("todoNone");
+    sel.innerHTML = `<option value="">${esc(first)}</option>` + list.map((x) => `<option value="${esc(x.id)}">${esc([x.no, x.title].filter(Boolean).join(" · "))}</option>`).join("");
+    sel.value = cur;
+    $("lblTodo").textContent = t("todoLbl");
+    $("btnTodoReload").textContent = "↻"; $("btnTodoReload").title = t("todoReload"); if ($("btnTodoReload").setAttribute) $("btnTodoReload").setAttribute("aria-label", t("todoReload"));
+  }
+  /** "ДР…" ToDos in Connect (open) that no entry here points to: listed over the register with Добави. */
+  function renderOrphans() {
+    const el = $("regOrphans");
+    if (!el) return;
+    const used = new Set(state.items.filter(AV.isExtra).map((x) => x.extra.todo).filter(Boolean));
+    const list = state.writable ? (state.todos || []).filter((x) => DR_TITLE.test(x.title) && x.status !== "CLOSED" && !used.has(x.id)) : [];
+    el.hidden = !list.length;
+    el.innerHTML = list.length ? `<span class="sub">${esc(t("orphans"))}</span> ` + list.map((x) => `<button type="button" class="small secondary" data-todo="${esc(x.id)}" title="${esc(t("adoptT"))}">${esc(`${t("adopt")}: ${x.no} ${x.title}`.trim())}</button>`).join(" ") : "";
+  }
+  /** A ToDo picked (in the form or with Добави): the text is filled from its title when the text is still empty. */
+  function pickTodo(id) {
+    const x = (state.todos || []).find((y) => y.id === id);
+    state.todoCur = id || ""; state.todoNoKeep = x ? x.no : "";
+    $("selTodo").value = state.todoCur;
+    // the text from the title; "ДР – " in front is dropped only when it is the word ДР ("Дренаж" stays whole, review)
+    if (x && !String($("inText").value || "").trim()) $("inText").value = (DR_TITLE.test(x.title) ? x.title.replace(/^\s*ДР(?![\p{L}\p{N}])\s*[-–—:.]*\s*/iu, "").trim() : "") || x.title;
   }
   function weekTitle(week) {
     if (!week) return t("planned");
@@ -263,7 +319,10 @@
     // Откажи, Отвори в Connect and the rest under "Още…"; never Изтрий (a register number is never freed)
     const NEXT = { pending: "approved", approved: "doing", doing: "done", rejected: "pending" };
     const stBtn = (x, st) => `<button class="secondary${st === "rejected" ? " del" : ""}" data-act="status" data-id="${esc(x.id)}" data-st="${esc(st)}"${busy ? " disabled" : ""}>${esc(t("go_" + st))}</button>`;
-    const linkBtn = (x) => (x.extra.link ? `<a class="btnlink" href="${esc(x.extra.link)}" target="_blank" rel="noopener noreferrer" title="${esc(t("openConnectT"))}">${esc(t("openConnect"))}</a>` : "");
+    const linkBtn = (x) => {
+      const url = x.extra.todo ? todoUrl(x.extra.todo) : x.extra.link;
+      return url ? `<a class="btnlink" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(t(x.extra.todo ? "openTodoT" : "openConnectT"))}">${esc(t("openConnect"))}</a>` : "";
+    };
     const actsX = (x) => {
       const open = state.actsOpen === x.id, st = x.extra.status;
       const more = `<button class="secondary more" data-act="more" data-id="${esc(x.id)}" title="${esc(t("moreT"))}" aria-label="${esc(t("moreT"))}" aria-expanded="${open}">${esc(t("more"))}</button>`;
@@ -293,6 +352,7 @@
       const e = x.extra, bits = [];
       if (e.sheet || e.page) bits.push(`📄 ${[e.sheet, e.page ? `${t("page")} ${e.page}` : ""].filter(Boolean).join(" · ")}`);
       if (e.where) bits.push(e.where);
+      if (e.todoNo) bits.push(`${t("todoMeta")} ${e.todoNo}`);
       if (e.qty != null) bits.push(qtyText(e.qty, e.unit));
       if (e.since) bits.push(`${t("st_" + e.status)} ${fmtDate(e.since)}`);
       return bits.length ? `<div class="meta sub">${esc(bits.join(" · "))}</div>` : "";
@@ -644,11 +704,14 @@
     $("inText").value = ""; $("inDate").value = today(); $("chkPlanned").checked = state.kind === "extra";
     $("chkClient").checked = state.kind === "extra" ? false : state.addClient === true;   // an additional work: never for the client by default
     $("inPhotos").value = "";
-    for (const id of ["inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink"]) $(id).value = "";
+    for (const id of ["inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink", "selTodo"]) $(id).value = "";
+    state.todoCur = "";
+    state.todoNoKeep = "";
   }
   /** The additional-work fields of the form: {qty, unit, sheet, page, where, link} (as typed; checked by AV.apply). */
   const extraForm = () => ({ qty: String($("inQty").value || "").trim(), unit: $("selUnit").value || "", sheet: $("inSheet").value || "",
-    page: String($("inPage").value || "").trim(), where: $("inWhere").value || "", link: String($("inLink").value || "").trim() });
+    page: String($("inPage").value || "").trim(), where: $("inWhere").value || "", link: String($("inLink").value || "").trim(),
+    todo: state.todoCur || "", todoNo: (((state.todos || []).find((x) => x.id === state.todoCur) || {}).no) || (state.todoCur ? state.todoNoKeep || "" : "") });
   /** Switch the form between an activity and an additional work (not while editing). */
   function setKind(k) {
     if (state.editing || state.busy || state.kind === k) return;
@@ -658,6 +721,7 @@
     $("chkClient").checked = k === "extra" ? false : state.addClient === true;
     $("chkPlanned").checked = k === "extra";
     render();
+    if (k === "extra") loadTodos();
   }
   async function submit() {
     const text = $("inText").value, date = $("chkPlanned").checked ? "" : $("inDate").value || "";
@@ -686,7 +750,7 @@
         if (ex && AV.isExtra(editing)) {
           // only the extra fields that changed (another person's status change meanwhile is kept)
           const was = (state.editFrom && state.editFrom.extra) || editing.extra, cmp = AV.parse([{ id: "x", text: "x", extra: Object.assign({ no: 1 }, ex) }])[0].extra, patch = {};
-          for (const k of ["qty", "unit", "sheet", "page", "where", "link"]) if (cmp[k] !== was[k]) patch[k] = ex[k];
+          for (const k of ["qty", "unit", "sheet", "page", "where", "link", "todo", "todoNo"]) if (cmp[k] !== was[k]) patch[k] = ex[k];
           if (Object.keys(patch).length) e.extra = patch;
         }
         if (Object.keys(e).length === 1) return true;   // nothing changed
@@ -774,7 +838,7 @@
       return;
     }
     if (act === "edit") {
-      const typed = String($("inText").value).trim() || state.picked.length || (state.kind === "extra" && ["inQty", "inSheet", "inPage", "inWhere", "inLink"].some((k) => String($(k).value || "").trim()));
+      const typed = String($("inText").value).trim() || state.picked.length || (state.kind === "extra" && ["inQty", "inSheet", "inPage", "inWhere", "inLink"].some((k) => String($(k).value || "").trim()) || !!state.todoCur);
       if (!state.editing && typed && !(await ask(id, () => t("unsaved"), "discard", "goBack", true))) {
         $("inText").focus();   // "Върни се": back to the typed entry
         if ($("form").scrollIntoView) $("form").scrollIntoView({ block: "nearest" });
@@ -787,6 +851,8 @@
       const xe = x.extra || {};
       $("inQty").value = xe.qty == null ? "" : String(xe.qty); $("selUnit").value = xe.unit || ""; $("inSheet").value = xe.sheet || "";
       $("inPage").value = xe.page ? String(xe.page) : ""; $("inWhere").value = xe.where || ""; $("inLink").value = xe.link || "";
+      state.todoNoKeep = xe.todoNo || ""; state.todoCur = xe.todo || ""; $("selTodo").value = state.todoCur;
+      if (AV.isExtra(x)) loadTodos();
       setPicked([]); state.uploaded = new Map(); $("inPhotos").value = ""; state.actsOpen = null;
       $("inText").value = x.text; $("inDate").value = x.date || today(); $("chkPlanned").checked = !x.date; $("chkClient").checked = x.client === true;
       render();
@@ -817,7 +883,7 @@
   }
 
   // ---------- the register: CSV and print (staff) ----------
-  const regLabels = () => ({ lang, head: ["hNo", "hDate", "hWork", "hStatus", "hSince", "hQty", "hUnit", "hSheet", "hPage", "hWhere", "hLink", "hClient"].map(t),
+  const regLabels = () => ({ lang, todoUrl, head: ["hNo", "hDate", "hWork", "hStatus", "hSince", "hQty", "hUnit", "hSheet", "hPage", "hWhere", "hLink", "hClient", "hTodo"].map(t),
     status: Object.fromEntries(AV.STATUSES.map((k) => [k, t("st_" + k)])), unit: Object.fromEntries(Object.keys(AV.UNITS).map((k) => [k, unitText(k)])), yes: t("yes"), no: t("no") });
   const fileSafe = (s) => String(s || "").replace(/[^\p{L}\p{N}._-]+/gu, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "project";
   /** The register as a CSV file (Excel opens it with Cyrillic intact: BOM + ";"). */
@@ -867,7 +933,17 @@
   $("btnKindAct").onclick = () => setKind("act");
   $("btnKindExtra").onclick = () => setKind("extra");
   $("btnViewAll").onclick = () => { state.view = "all"; state.stFilter = ""; renderList(); };
-  $("btnViewExtra").onclick = () => { state.view = "extra"; renderList(); };
+  $("btnViewExtra").onclick = () => { state.view = "extra"; renderList(); if (state.writable) loadTodos(); };
+  $("selTodo").onchange = () => pickTodo($("selTodo").value);
+  $("btnTodoReload").onclick = () => loadTodos(true);
+  $("regOrphans").onclick = (e) => {
+    const b = e.target && e.target.closest && e.target.closest("[data-todo]");
+    if (!b || state.busy || state.editing) return;
+    if (state.kind !== "extra") setKind("extra");
+    pickTodo(b.dataset.todo);
+    $("inText").focus();
+    if ($("form").scrollIntoView) $("form").scrollIntoView({ block: "nearest" });
+  };
   $("regChips").onclick = (e) => { const b = e.target && e.target.closest && e.target.closest("[data-st]"); if (b) { state.stFilter = b.dataset.st || ""; renderList(); } };
   $("btnCsv").onclick = () => guarded(downloadCsv);
   $("btnPrint").onclick = () => guarded(printRegister);
