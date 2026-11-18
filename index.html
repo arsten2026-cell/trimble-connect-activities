@@ -43,12 +43,42 @@
   .act .txt { flex:1; min-width:0; overflow-wrap:anywhere; }
   .act .acts { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0 86px; }
   .act .acts button { padding:2px 8px; font-size:11px; min-height:24px; }
-  .act .acts button[aria-pressed=true] { border-color:var(--ink); }
+  .act .acts .cl { align-self:center; margin-right:2px; }
+  .act .acts .cl.on { color:var(--ink); font-weight:600; }
+  .act .acts button.del { margin-left:auto; }   /* away from "+ снимка" */
+  /* the inline question under a row (sweep 18.11.2026): window.confirm can be blocked in Connect's frame / a phone webview */
+  .act .ask { margin:6px 0 0 86px; padding:6px 8px; border:1px solid var(--bad); background:#fdf0ef; white-space:pre-line; }
+  .act .ask .acts { margin:6px 0 0 0; }
+  .act .ask button.go { background:var(--bad); border-color:var(--bad); color:#fff; }
+  /* result of a write at the bottom, near the finger (as pour-status): always in the DOM for screen readers, visually
+     hidden when idle; taps pass through */
+  body { padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px)); }
+  .toast { position:fixed; left:8px; bottom:calc(8px + env(safe-area-inset-bottom, 0px)); z-index:20; max-width:min(80%, 420px);
+    padding:8px 10px; font-size:13px; color:#fff; pointer-events:none; }
+  .toast:not(.show) { width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+  .toast.ok { background:#2e7d32; }
+  .toast.bad { background:var(--bad); }
+  /* touch screens (sweep 18.11.2026, as pour-status A1): ~40 px targets, 16 px inputs (no iOS zoom on focus) */
+  @media (pointer: coarse) {
+    button, button.small, select, input[type=date], input[type=text] { min-height:40px; }
+    button.small, .act .acts button { padding:6px 12px; font-size:14px; min-height:40px; }
+    select, input[type=date], input[type=text] { font-size:16px; padding:6px 8px; }
+    input[type=checkbox] { width:22px; height:22px; }
+    label.chk, .photoPick { min-height:40px; font-size:14px; }
+    .bar, .act .acts { gap:8px; }
+    .thumb button { min-width:32px; min-height:32px; line-height:30px; }
+  }
   .thumbs { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0 86px; }
   .thumb { position:relative; width:72px; height:72px; background:#ece8df; border:1px solid var(--line); }
   .thumb img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
   .thumb button { position:absolute; top:-6px; right:-6px; min-width:24px; min-height:24px; padding:0; line-height:22px; font-size:14px; background:#fff; }
-  @media (max-width:360px) { .act .acts, .thumbs { margin-left:0; } .act .d { width:70px; } }
+  /* picked photos in the form (sweep 18.11.2026): 56 px previews, each with × */
+  .thumbs.picked { margin:6px 0 0 0; }
+  .thumbs.picked .thumb { width:56px; height:56px; }
+  /* a row: the state chip left, its one button and "Още…" right; the other actions under it when opened */
+  .act .acts .cl { margin-right:auto; }
+  .act .acts.extra { margin-top:4px; }
+  @media (max-width:360px) { .act .acts, .thumbs, .act .ask { margin-left:0; } .act .d { width:70px; } }
   /* full-size photo */
   #viewer { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:10; }
   #viewer img { max-width:96vw; max-height:90vh; }
@@ -57,6 +87,7 @@
 </head>
 <body>
 <div class="top"><h1 id="title">Дейности</h1>
+  <button type="button" id="btnRefresh" class="small secondary">Обнови</button>
   <select id="selLang" title="Language / Език"><option value="bg">BG</option><option value="en">EN</option></select></div>
 <button type="button" class="small secondary" data-arsten-diag style="float:right;margin-left:6px">Копирай диагностика</button>
 <div id="status" class="status">Trimble Connect…</div>
@@ -69,26 +100,32 @@
     <label class="fld" for="inDate" id="lblDate"></label>
     <div class="bar" style="margin-top:0">
       <input type="date" id="inDate">
-      <label class="chk"><input type="checkbox" id="chkClient" checked> <span id="lblClient"></span></label>
+      <label class="chk"><input type="checkbox" id="chkPlanned"> <span id="lblPlanned"></span></label>
+    </div>
+    <div class="bar">
+      <label class="chk"><input type="checkbox" id="chkClient"> <span id="lblClient"></span></label>
       <label class="photoPick" id="lblPhotos"><input type="file" id="inPhotos" accept="image/*" multiple><span id="txtPhotos"></span></label>
     </div>
+    <div class="sub" id="clientHint"></div>
     <div class="sub" id="pickInfo"></div>
+    <div class="thumbs picked" id="pickList" hidden></div>
     <div class="bar" style="margin-bottom:0"><button id="btnSave"></button><button id="btnCancel" class="secondary" hidden></button></div>
   </div>
   <input type="file" id="inMore" accept="image/*" multiple hidden>
   <div id="list"></div>
   <div class="bar"><button id="btnOlder" class="small secondary" hidden></button></div>
 </div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="viewer" hidden><img id="viewerImg" alt=""><button id="btnViewerClose" class="small secondary" style="background:#fff"></button></div>
 
 <script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
 <script src="arsten-perf.js?v=21f7454938"></script>
 <script src="arsten-diag.js?v=bb0c6351fe"></script>
-<script src="arsten-i18n.js?v=de006467e2"></script>
-<script src="arsten-access.js?v=253829d007"></script>
-<script src="arsten-backup.js?v=032cc821bb"></script>
-<script src="arsten-photos.js?v=fd69e17caf"></script>
-<script src="arsten-activities.js?v=1a4b53ca35"></script>
-<script src="app.js?v=c18d1e717a"></script>
+<script src="arsten-i18n.js?v=c58f01c9fc"></script>
+<script src="arsten-access.js?v=fad565fcbe"></script>
+<script src="arsten-backup.js?v=6c54dfe763"></script>
+<script src="arsten-photos.js?v=58db357146"></script>
+<script src="arsten-activities.js?v=a54cd384f8"></script>
+<script src="app.js?v=d67209145c"></script>
 </body>
 </html>
