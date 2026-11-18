@@ -46,6 +46,33 @@
   .act .acts .cl { align-self:center; margin-right:2px; }
   .act .acts .cl.on { color:var(--ink); font-weight:600; }
   .act .acts button.del { margin-left:auto; }   /* away from "+ снимка" */
+  /* additional works (ДР): number, status chip, drawing / place / quantity line */
+  .kind { display:flex; gap:0; margin-bottom:4px; }
+  .kind button { flex:1; }
+  #extraBox .grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; }
+  #extraBox .grid > div { min-width:0; }
+  #extraBox input[type=text], #extraBox select { width:100%; }
+  .act .no { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .st { display:inline-block; font-size:11px; padding:0 6px; border:1px solid var(--line); background:#f1eee8; white-space:nowrap; }
+  .st-pending { background:#FFF4E5; border-color:#E8B66A; }
+  .st-approved { background:#EAF3FB; border-color:#8FB3D9; }
+  .st-doing { background:#FDEBDD; border-color:var(--accent); }
+  .st-done { background:#E8F5E9; border-color:#81C784; }
+  .st-rejected { background:#f3f3f3; color:var(--muted); text-decoration:line-through; }
+  button.st { font-size:12px; text-decoration:none; color:var(--ink); }
+  button.st[aria-pressed="true"] { outline:2px solid var(--ink); }
+  .act .meta { margin:2px 0 0 86px; }
+  .act .acts a.btnlink { display:inline-flex; align-items:center; padding:2px 8px; font-size:11px; min-height:24px; border:1px solid var(--line); color:var(--ink); text-decoration:none; background:#fff; }
+  #viewBar { margin-top:14px; }
+  #printReg { display:none; }
+  @media print {
+    body { padding:0; background:#fff; }
+    body > *:not(#printReg) { display:none !important; }
+    #printReg { display:block !important; }
+    #printReg table { width:100%; border-collapse:collapse; font-size:11px; }
+    #printReg th, #printReg td { border:1px solid #999; padding:3px 5px; text-align:left; vertical-align:top; }
+    #printReg tr { break-inside:avoid; }
+  }
   /* the inline question under a row (sweep 18.11.2026): window.confirm can be blocked in Connect's frame / a phone webview */
   .act .ask { margin:6px 0 0 86px; padding:6px 8px; border:1px solid var(--bad); background:#fdf0ef; white-space:pre-line; }
   .act .ask .acts { margin:6px 0 0 0; }
@@ -67,6 +94,8 @@
     label.chk, .photoPick { min-height:40px; font-size:14px; }
     .bar, .act .acts { gap:8px; }
     .thumb button { min-width:32px; min-height:32px; line-height:30px; }
+    .act .acts a.btnlink { min-height:40px; padding:6px 12px; font-size:14px; }
+    input[type=number] { min-height:40px; font-size:16px; }
   }
   .thumbs { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0 86px; }
   .thumb { position:relative; width:72px; height:72px; background:#ece8df; border:1px solid var(--line); }
@@ -78,7 +107,8 @@
   /* a row: the state chip left, its one button and "Още…" right; the other actions under it when opened */
   .act .acts .cl { margin-right:auto; }
   .act .acts.extra { margin-top:4px; }
-  @media (max-width:360px) { .act .acts, .thumbs, .act .ask { margin-left:0; } .act .d { width:70px; } }
+  @media (max-width:360px) { .act .acts, .thumbs, .act .ask, .act .meta { margin-left:0; } .act .d { width:70px; } }
+  input[type=number] { font:inherit; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; width:100%; }
   /* full-size photo */
   #viewer { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:10; }
   #viewer img { max-width:96vw; max-height:90vh; }
@@ -95,12 +125,24 @@
 <div id="main" hidden>
   <div class="sub" id="hint"></div>
   <div class="box" id="form" style="margin-top:8px">
+    <div class="kind" id="kindBar" role="group"><button type="button" id="btnKindAct" class="small"></button><button type="button" id="btnKindExtra" class="small secondary"></button></div>
     <label class="fld" for="inText" id="lblText"></label>
     <input type="text" id="inText" maxlength="200">
     <label class="fld" for="inDate" id="lblDate"></label>
     <div class="bar" style="margin-top:0">
       <input type="date" id="inDate">
       <label class="chk"><input type="checkbox" id="chkPlanned"> <span id="lblPlanned"></span></label>
+    </div>
+    <div id="extraBox" hidden>
+      <div class="grid">
+        <div><label class="fld" for="inQty" id="lblQty"></label><input type="text" id="inQty" inputmode="decimal" maxlength="14" autocomplete="off"></div>
+        <div><label class="fld" for="selUnit" id="lblUnit"></label><select id="selUnit"></select></div>
+        <div><label class="fld" for="inSheet" id="lblSheet"></label><input type="text" id="inSheet" maxlength="60" autocomplete="off"></div>
+        <div><label class="fld" for="inPage" id="lblPage"></label><input type="text" id="inPage" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+      </div>
+      <label class="fld" for="inWhere" id="lblWhere"></label><input type="text" id="inWhere" maxlength="120" autocomplete="off">
+      <label class="fld" for="inLink" id="lblLink"></label><input type="text" id="inLink" inputmode="url" maxlength="500" autocomplete="off" spellcheck="false">
+      <div class="sub" id="linkHint"></div>
     </div>
     <div class="bar">
       <label class="chk"><input type="checkbox" id="chkClient"> <span id="lblClient"></span></label>
@@ -112,10 +154,17 @@
     <div class="bar" style="margin-bottom:0"><button id="btnSave"></button><button id="btnCancel" class="secondary" hidden></button></div>
   </div>
   <input type="file" id="inMore" accept="image/*" multiple hidden>
+  <div class="bar" id="viewBar" hidden><button type="button" id="btnViewAll" class="small"></button><button type="button" id="btnViewExtra" class="small secondary"></button></div>
+  <div id="regBar" hidden>
+    <div class="bar" id="regChips"></div>
+    <div class="sub" id="regSum"></div>
+    <div class="bar"><button type="button" id="btnCsv" class="small secondary"></button><button type="button" id="btnPrint" class="small secondary"></button></div>
+  </div>
   <div id="list"></div>
   <div class="bar"><button id="btnOlder" class="small secondary" hidden></button></div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="printReg"></div>
 <div id="viewer" hidden><img id="viewerImg" alt=""><button id="btnViewerClose" class="small secondary" style="background:#fff"></button></div>
 
 <script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
@@ -125,7 +174,7 @@
 <script src="arsten-access.js?v=fad565fcbe"></script>
 <script src="arsten-backup.js?v=6c54dfe763"></script>
 <script src="arsten-photos.js?v=58db357146"></script>
-<script src="arsten-activities.js?v=a54cd384f8"></script>
-<script src="app.js?v=d67209145c"></script>
+<script src="arsten-activities.js?v=c5cafe4643"></script>
+<script src="app.js?v=ee4d28e8b7"></script>
 </body>
 </html>

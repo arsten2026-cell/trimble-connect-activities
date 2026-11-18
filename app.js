@@ -5,6 +5,10 @@
 // Writing needs ArstenAccess.canWrite (a Connect project ADMIN outside those groups only reads).
 // The client never opens this panel: Статус publishes the dated entries ticked "за клиента" (text, date and up to 6 photos, copied to _AM_Docs/Client/Photos).
 // Every save reads the list again first and applies just that one change (arsten-activities.js change).
+// Additional works (ДР, user 18.11.2026; PLAN-ACTIVITIES-ON-DRAWINGS.md phase 1): the form's "Допълнителна работа"
+// switch adds an entry with a register number ДР-NNN (given at save), status, quantity + unit, drawing, page, place and
+// the Connect share link of the drawing marked in Connect's own 2D viewer. "Допълнителни работи" shows the register:
+// counts by status, done totals per unit, CSV for Excel and a printable list. Connect draws; this panel keeps the register.
 (() => {
   "use strict";
   const AV = window.ArstenActivities, PH = window.ArstenPhotos, B = window.ArstenBackup, I18N = window.ArstenI18n;
@@ -67,6 +71,40 @@
     noLink: ["Махнете линка от текста – клиентът вижда текста. Пазете линка в ToDo или изгледа.", "Remove the link from the text – the client sees the text. Keep the link in the ToDo or the view."],
     checking: ["Проверявам какво е публикувано…", "Checking what was published…"],
     pubFail: ["Записано, но снимките в папката на клиента не се махнаха – помолете администратора.", "Saved, but the photos in the client's folder were not removed – ask the admin."],
+    // additional works (ДР, user 18.11.2026)
+    kindAct: ["Дейност", "Activity"], kindExtra: ["Допълнителна работа", "Additional work"],
+    kindT: ["Вид на записа", "Kind of entry"],
+    textLblX: ["Каква допълнителна работа", "What additional work"], phX: ["напр. Изкоп за кабел извън проекта", "e.g. Cable trench outside the design"],
+    qtyLbl: ["Количество", "Quantity"], unitLbl: ["Мярка", "Unit"], sheetLbl: ["Чертеж", "Drawing"], sheetPh: ["напр. ST-DR-0101 R02", "e.g. ST-DR-0101 R02"],
+    pageLbl: ["Стр.", "Page"], whereLbl: ["Място", "Place"], wherePh: ["напр. ос А-3, кота +3.20", "e.g. grid A-3, level +3.20"],
+    linkLbl: ["Връзка от Connect (по желание)", "Link from Connect (optional)"], linkPh: ["https://web.connect.trimble.com/…", "https://web.connect.trimble.com/…"],
+    linkHint: ["Отбележете мястото на чертежа в Connect (облак + текст), запазете изглед или задача „ДР – …“ и поставете връзката ѝ тук.",
+      "Mark the place on the drawing in Connect (cloud + text), save a view or a ToDo \"ДР – …\" and paste its share link here."],
+    clientHintX: ["Допълнителна работа отива при клиента само ако е отметната и изпълнена – само номер и текст.",
+      "An additional work goes to the client only when ticked and done – number and text only."],
+    badQty: ["Количеството трябва да е число ≥ 0.", "The quantity must be a number ≥ 0."],
+    badLink: ["Връзката трябва да е от Connect (https://…connect.trimble.com/…).", "The link must be a Connect link (https://…connect.trimble.com/…)."],
+    numbered: ["Допълнителна работа с номер не се изтрива – откажете я.", "A numbered additional work is not deleted – reject it."],
+    savedNo: ["записана ✓", "saved ✓"],
+    st_pending: ["Чака одобрение", "Awaiting approval"], st_approved: ["Одобрена", "Approved"], st_doing: ["В изпълнение", "In progress"],
+    st_done: ["Изпълнена", "Done"], st_rejected: ["Отказана", "Rejected"],
+    stp_pending: ["Чакат одобрение", "Awaiting approval"], stp_approved: ["Одобрени", "Approved"], stp_doing: ["В изпълнение", "In progress"],
+    stp_done: ["Изпълнени", "Done"], stp_rejected: ["Отказани", "Rejected"],
+    go_approved: ["Одобри", "Approve"], go_doing: ["Започната", "Started"], go_done: ["Изпълнена", "Done"], go_pending: ["Върни за одобрение", "Back to approval"],
+    go_rejected: ["Откажи работата", "Reject the work"],
+    rejQ: ["Да откажа ли {no}? Номерът остава в регистъра.", "Reject {no}? The number stays in the register."], rejGo: ["Потвърди: откажи", "Confirm: reject"],
+    openConnect: ["Отвори в Connect", "Open in Connect"], openConnectT: ["Отваря отбелязания чертеж в Connect (нов раздел)", "Opens the marked drawing in Connect (new tab)"],
+    viewAll: ["Всички", "All"], viewExtra: ["Допълнителни работи", "Additional works"], allStatus: ["всички", "all"],
+    regNone: ["Още няма допълнителни работи. Превключете формата на „Допълнителна работа“.", "No additional works yet. Switch the form to \"Additional work\"."],
+    doneSum: ["Изпълнени общо", "Done in total"], csv: ["CSV (Excel)", "CSV (Excel)"], print: ["Печат", "Print"],
+    regTitle: ["Регистър на допълнителните работи", "Register of additional works"], page: ["стр.", "p."],
+    hNo: ["№", "No"], hDate: ["Дата", "Date"], hWork: ["Работа", "Work"], hStatus: ["Състояние", "Status"], hSince: ["От", "Since"],
+    hQty: ["Количество", "Quantity"], hUnit: ["Мярка", "Unit"], hSheet: ["Чертеж", "Drawing"], hPage: ["Стр.", "Page"], hWhere: ["Място", "Place"],
+    hLink: ["Връзка", "Link"], hClient: ["За клиента", "For the client"], yes: ["да", "yes"], no: ["не", "no"],
+    badUnit: ["Изберете мярка от списъка.", "Pick a unit from the list."],
+    stale: ["Някой друг го промени междувременно – списъкът е обновен, вижте и опитайте пак.", "Someone else changed it meanwhile – the list is refreshed; check it and try again."], badPage: ["Страницата е число от 1 до 9999.", "The page is a number from 1 to 9999."],
+    dateLblX: ["Дата на изпълнение", "Date done"], plannedChkX: ["Още не е изпълнена", "Not done yet"],
+    unit_pcs: ["бр.", "pcs"], unit_set: ["к-т", "set"], unit_t: ["т", "t"], unit_kg: ["кг", "kg"], unit_h: ["ч", "h"],
   };
   const storedLang = I18N ? I18N.stored([LANG_KEY]) : "";
   let lang = storedLang || "bg";
@@ -76,6 +114,9 @@
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
   const fmtDate = (d) => { if (!d) return ""; if (I18N) return I18N.fmtDate(d, lang); const [y, m, dd] = d.split("-"); return `${dd}.${m}.${y}`; };
   const errText = (e) => (e && (e.message || e.toString())) || String(e);
+  /** A unit as shown: м² / m³ … in the language (AV.UNITS has the stored keys). */
+  const unitText = (u) => (T["unit_" + u] ? t("unit_" + u) : (AV.UNITS && AV.UNITS[u]) || u || "");
+  const qtyText = (q, u) => (q == null ? "" : `${lang === "bg" ? String(q).replace(".", ",") : q} ${unitText(u)}`.trim());
   // sweep 18.11.2026: a status may be a function of the language, so a language switch re-renders it (as pour-status
   // relabelStatus); a plain string (the project name) stays as it is.
   let statusAgain = null;
@@ -123,6 +164,8 @@
     // the folder and downloading activities.json again before every tap (~3 serial round trips, ~1 s on site 4G).
     base: null,
     checking: null,                                               // the entry whose client copies are being looked up (Скрий от клиента)
+    kind: "act",                                                  // the form adds an activity ("act") or an additional work ("extra")
+    view: "all", stFilter: "",                                    // the list: all entries by week, or the register of additional works (one status or all)
   };
   let tokens = null, core = null;
   const getToken = (refresh) => tokens.getToken(refresh);
@@ -137,13 +180,15 @@
     $("hint").textContent = state.writable ? t("hint") : t("readOnly");
     $("form").hidden = !state.writable;
     $("form").classList.toggle("editing", !!state.editing);
-    $("lblText").textContent = t("textLbl");
-    $("inText").placeholder = t("ph");
-    $("lblDate").textContent = t("dateLbl"); $("inDate").title = t("dateLbl");
+    const ex = state.kind === "extra";
+    $("lblText").textContent = t(ex ? "textLblX" : "textLbl");
+    $("inText").placeholder = t(ex ? "phX" : "ph");
+    renderKind();
+    $("lblDate").textContent = t(ex ? "dateLblX" : "dateLbl"); $("inDate").title = t(ex ? "dateLblX" : "dateLbl");
     $("inDate").max = today();
-    $("lblPlanned").textContent = t("plannedChk");
+    $("lblPlanned").textContent = t(ex ? "plannedChkX" : "plannedChk");
     $("lblClient").textContent = t("forClient");
-    $("clientHint").textContent = t("clientHint");
+    $("clientHint").textContent = t(ex ? "clientHintX" : "clientHint");
     const n = state.picked.length;
     $("txtPhotos").textContent = "📷 " + t(n ? "addMore" : "photos");
     $("pickInfo").textContent = n ? `${n} ${t(n === 1 ? "photos1" : "photosN")}` : "";
@@ -151,12 +196,43 @@
     $("btnSave").textContent = t(state.editing ? "save" : "add");
     $("btnCancel").textContent = t("cancel"); $("btnCancel").hidden = !state.editing;
     const busy = state.busy || !state.loaded;
-    for (const id of ["btnSave", "inText", "inDate", "chkPlanned", "chkClient", "inPhotos", "btnCancel"]) $(id).disabled = id === "btnSave" ? busy : state.busy;
+    for (const id of ["btnSave", "inText", "inDate", "chkPlanned", "chkClient", "inPhotos", "btnCancel", "inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink"]) $(id).disabled = id === "btnSave" ? busy : state.busy;
     if ($("chkPlanned").checked) $("inDate").disabled = true;   // planned = no date (clearing a native date field is fiddly on a phone)
     $("btnViewerClose").textContent = t("close");
     const rb = $("btnRefresh");
     if (rb) { rb.textContent = t("refresh"); rb.title = t("refreshT"); rb.disabled = state.busy || !state.project; }
     renderList();
+  }
+  /** The form's kind switch and the additional-work fields (the switch is fixed while an entry is edited). */
+  function renderKind() {
+    const ex = state.kind === "extra", fixed = !!state.editing || state.busy;
+    const kb = (id, k, label) => { const b = $(id); b.textContent = t(label); b.className = "small" + (state.kind === k ? "" : " secondary"); if (b.setAttribute) b.setAttribute("aria-pressed", String(state.kind === k)); b.disabled = fixed; };
+    kb("btnKindAct", "act", "kindAct"); kb("btnKindExtra", "extra", "kindExtra");
+    if ($("kindBar").setAttribute) $("kindBar").setAttribute("aria-label", t("kindT"));
+    $("extraBox").hidden = !ex;
+    $("lblQty").textContent = t("qtyLbl"); $("lblUnit").textContent = t("unitLbl"); $("lblSheet").textContent = t("sheetLbl");
+    $("lblPage").textContent = t("pageLbl"); $("lblWhere").textContent = t("whereLbl"); $("lblLink").textContent = t("linkLbl");
+    $("inSheet").placeholder = t("sheetPh"); $("inWhere").placeholder = t("wherePh"); $("inLink").placeholder = t("linkPh");
+    $("linkHint").textContent = t("linkHint");
+    const u = $("selUnit").value || "";
+    $("selUnit").innerHTML = `<option value="">–</option>` + Object.keys(AV.UNITS || {}).map((k) => `<option value="${esc(k)}">${esc(unitText(k))}</option>`).join("");
+    $("selUnit").value = u;
+  }
+  /** "Всички | Допълнителни работи (N)" over the list, and in the register: status chips, done totals, CSV, Печат. */
+  function renderViewBar() {
+    const reg = AV.register(state.items), n = reg.items.length;
+    const vb = (id, v, label) => { const b = $(id); b.textContent = label; b.className = "small" + (state.view === v ? "" : " secondary"); if (b.setAttribute) b.setAttribute("aria-pressed", String(state.view === v)); };
+    $("viewBar").hidden = !state.loaded;
+    vb("btnViewAll", "all", t("viewAll")); vb("btnViewExtra", "extra", `${t("viewExtra")} (${n})`);
+    const on = state.loaded && state.view === "extra";
+    $("regBar").hidden = !on;
+    if (!on) return;
+    const chip = (k, label, c) => `<button type="button" class="small${state.stFilter === k ? "" : " secondary"} st${k ? " st-" + k : ""}" data-st="${esc(k)}" aria-pressed="${state.stFilter === k}">${esc(label)}${c == null ? "" : ` ${c}`}</button>`;
+    $("regChips").innerHTML = chip("", t("allStatus"), n) + AV.STATUSES.filter((k) => reg.counts[k]).map((k) => chip(k, t("stp_" + k), reg.counts[k])).join("");
+    const sums = Object.keys(reg.done).map((u) => qtyText(reg.done[u], u));
+    $("regSum").textContent = sums.length ? `${t("doneSum")}: ${sums.join(", ")}` : "";
+    $("btnCsv").textContent = t("csv"); $("btnPrint").textContent = t("print");
+    $("btnCsv").disabled = $("btnPrint").disabled = !n;
   }
   function weekTitle(week) {
     if (!week) return t("planned");
@@ -172,15 +248,31 @@
       $("btnOlder").hidden = true;
       return;
     }
-    const groups = AV.byWeek(state.items);
-    const dated = groups.filter((g) => g.week);
-    const shown = groups.filter((g) => !g.week).concat(dated.slice(0, state.weeks));
+    renderViewBar();
+    const regView = state.view === "extra";
+    const groups = regView ? [{ week: "reg", items: AV.register(state.items).items.filter((x) => !state.stFilter || x.extra.status === state.stFilter) }].filter((g) => g.items.length)
+      : AV.byWeek(state.items);
+    const dated = regView ? [] : groups.filter((g) => g.week);
+    const shown = regView ? groups : groups.filter((g) => !g.week).concat(dated.slice(0, state.weeks));
     const busy = state.busy || !state.writable;
     const btn = (act, id, label, title, cls) => `<button class="secondary${cls ? " " + cls : ""}" data-act="${act}" data-id="${esc(id)}" title="${esc(title)}" aria-label="${esc(title)}"${busy ? " disabled" : ""}>${esc(label)}</button>`;
     const photoBtn = (x) => (x.photos.length < AV.PHOTOS_MAX ? btn("morephoto", x.id, t("addPhoto"), t("addPhotoT")) : "");
     // one row = the state chip, ONE primary button (Извършено днес for a planned entry, else + снимка) and "Още…"; the
     // other actions open under the row tapped, one row at a time, Изтрий last (sweep 18.11.2026)
+    // an additional work: its next step is the one button (Одобри → Започната → Изпълнена; Върни for a rejected one);
+    // Откажи, Отвори в Connect and the rest under "Още…"; never Изтрий (a register number is never freed)
+    const NEXT = { pending: "approved", approved: "doing", doing: "done", rejected: "pending" };
+    const stBtn = (x, st) => `<button class="secondary${st === "rejected" ? " del" : ""}" data-act="status" data-id="${esc(x.id)}" data-st="${esc(st)}"${busy ? " disabled" : ""}>${esc(t("go_" + st))}</button>`;
+    const linkBtn = (x) => (x.extra.link ? `<a class="btnlink" href="${esc(x.extra.link)}" target="_blank" rel="noopener noreferrer" title="${esc(t("openConnectT"))}">${esc(t("openConnect"))}</a>` : "");
+    const actsX = (x) => {
+      const open = state.actsOpen === x.id, st = x.extra.status;
+      const more = `<button class="secondary more" data-act="more" data-id="${esc(x.id)}" title="${esc(t("moreT"))}" aria-label="${esc(t("moreT"))}" aria-expanded="${open}">${esc(t("more"))}</button>`;
+      const main = `<div class="acts"><span class="sub cl${x.client ? " on" : ""}">${esc(x.client ? t("isClient") : t("isInternal"))}</span>${NEXT[st] ? stBtn(x, NEXT[st]) : photoBtn(x)}${more}</div>`;
+      if (!open) return main;
+      return main + `<div class="acts extra">${btn("edit", x.id, t("edit"), t("edit"))}${btn("client", x.id, x.client ? t("hideClient") : t("showClient"), x.client ? t("hideClient") : t("showClient"))}${linkBtn(x)}${NEXT[st] ? photoBtn(x) : ""}${st !== "rejected" && st !== "done" ? stBtn(x, "rejected") : ""}</div>`;
+    };
     const acts = (x) => {
+      if (AV.isExtra(x)) return actsX(x);
       const open = state.actsOpen === x.id;
       const more = `<button class="secondary more" data-act="more" data-id="${esc(x.id)}" title="${esc(t("moreT"))}" aria-label="${esc(t("moreT"))}" aria-expanded="${open}">${esc(t("more"))}</button>`;
       const main = `<div class="acts"><span class="sub cl${x.client ? " on" : ""}">${esc(x.client ? t("isClient") : t("isInternal"))}</span>${x.date ? photoBtn(x) : btn("done", x.id, t("doneShort"), t("doneToday"))}${more}</div>`;
@@ -195,14 +287,24 @@
       const img = url ? `<img src="${esc(url)}" alt="${esc(p.name)}" loading="lazy" data-act="view" data-id="${esc(p.id)}" data-photo="${esc(sid)}" data-full="${esc(p.id)}">` : `<span class="sub" style="display:block;padding:4px"${url === "" ? "" : ` data-want="${esc(sid)}"`}>${url === "" ? esc(t("noPhoto")) : "…"}</span>`;
       return `<span class="thumb">${img}${state.writable ? `<button class="secondary" data-act="rmphoto" data-id="${esc(x.id)}" data-photo="${esc(p.id)}" title="${esc(t("rmPhoto"))}" aria-label="${esc(t("rmPhoto"))}"${busy ? " disabled" : ""}>×</button>` : ""}</span>`;
     };
-    const row = (x) => `<li class="${x.date ? "" : "open"}${state.editing === x.id ? " editing" : ""}">
+    const head = (x) => (AV.isExtra(x) ? `<span class="no">${esc(AV.extraNo(x.extra.no))}</span> <span class="st st-${esc(x.extra.status)}">${esc(t("st_" + x.extra.status))}</span> ` : "");
+    const meta = (x) => {
+      if (!AV.isExtra(x)) return "";
+      const e = x.extra, bits = [];
+      if (e.sheet || e.page) bits.push(`📄 ${[e.sheet, e.page ? `${t("page")} ${e.page}` : ""].filter(Boolean).join(" · ")}`);
+      if (e.where) bits.push(e.where);
+      if (e.qty != null) bits.push(qtyText(e.qty, e.unit));
+      if (e.since) bits.push(`${t("st_" + e.status)} ${fmtDate(e.since)}`);
+      return bits.length ? `<div class="meta sub">${esc(bits.join(" · "))}</div>` : "";
+    };
+    const row = (x) => `<li class="${x.date ? "" : "open"}${state.editing === x.id ? " editing" : ""}${AV.isExtra(x) ? " xw" : ""}">
       <div class="hd"><span class="d">${esc(x.date ? fmtDate(x.date) : t("open"))}</span>
-      <span class="txt">${esc(x.text)}${tag(x) ? ` <span class="sub">(${esc(tag(x))})</span>` : ""}</span></div>
+      <span class="txt">${head(x)}${esc(x.text)}${tag(x) ? ` <span class="sub">(${esc(tag(x))})</span>` : ""}</span></div>${meta(x)}
       ${x.photos.length ? `<div class="thumbs">${x.photos.map((p) => thumb(x, p)).join("")}</div>` : ""}
       ${state.writable ? acts(x) : ""}${askBox(x)}
     </li>`;
-    $("list").innerHTML = shown.length ? shown.map((g) => `<div class="wk"><h2>${esc(weekTitle(g.week))}</h2><ul class="act">${g.items.map(row).join("")}</ul></div>`).join("")
-      : `<p class="sub" style="margin-top:12px">${esc(t("none"))}</p>`;
+    $("list").innerHTML = shown.length ? shown.map((g) => `<div class="wk"><h2>${esc(g.week === "reg" ? t("viewExtra") : weekTitle(g.week))}</h2><ul class="act">${g.items.map(row).join("")}</ul></div>`).join("")
+      : `<p class="sub" style="margin-top:12px">${esc(t(regView ? "regNone" : "none"))}</p>`;
     $("btnOlder").textContent = t("older");
     $("btnOlder").hidden = dated.length <= state.weeks;
     loadThumbs(shown.flatMap((g) => g.items));
@@ -355,8 +457,9 @@
   }
   /** A web link in the text (http(s)://… or www.…): never in the text of an entry "за клиента". */
   const hasLink = (s) => /\bhttps?:\/\/|\bwww\.[^\s]/i.test(String(s || ""));
-  const ERR = { text: "badText", date: "badDate", gone: "gone", full: "full", photos: "tooMany", conflict: "conflict" };
-  const errMsg = (k) => t(ERR[k] || "badText").replace("{n}", AV.PHOTOS_MAX);
+  const ERR = { text: "badText", date: "badDate", gone: "gone", full: "full", photos: "tooMany", conflict: "conflict",
+    stale: "stale", qty: "badQty", unit: "badUnit", link: "badLink", page: "badPage", numbered: "numbered", status: "conflict", op: "conflict" };
+  const errMsg = (k) => t(ERR[k] || "conflict").replace("{n}", AV.PHOTOS_MAX);
   /** What the next save can start from (state.base): a read list with its file and version; else only the folder id
    *  (still saves the walk to _AM_Docs/Activities); else nothing. */
   function keepBase(r) {
@@ -536,14 +639,35 @@
   }
   function resetForm() {
     state.editing = null; state.editFrom = null; setPicked([]); state.uploaded = new Map(); state.addId = null;
-    $("inText").value = ""; $("inDate").value = today(); $("chkPlanned").checked = false; $("chkClient").checked = state.addClient === true;
+    if (state.kindBefore) { state.kind = state.kindBefore; state.kindBefore = null; }   // back to the kind chosen before Промени
+    // review 18.11.2026: a new additional work starts "not done yet" (no date): its date is the day it was DONE, set by Изпълнена
+    $("inText").value = ""; $("inDate").value = today(); $("chkPlanned").checked = state.kind === "extra";
+    $("chkClient").checked = state.kind === "extra" ? false : state.addClient === true;   // an additional work: never for the client by default
     $("inPhotos").value = "";
+    for (const id of ["inQty", "selUnit", "inSheet", "inPage", "inWhere", "inLink"]) $(id).value = "";
+  }
+  /** The additional-work fields of the form: {qty, unit, sheet, page, where, link} (as typed; checked by AV.apply). */
+  const extraForm = () => ({ qty: String($("inQty").value || "").trim(), unit: $("selUnit").value || "", sheet: $("inSheet").value || "",
+    page: String($("inPage").value || "").trim(), where: $("inWhere").value || "", link: String($("inLink").value || "").trim() });
+  /** Switch the form between an activity and an additional work (not while editing). */
+  function setKind(k) {
+    if (state.editing || state.busy || state.kind === k) return;
+    if (state.kind === "act") state.addClient = $("chkClient").checked;
+    state.kind = k;
+    state.addId = null;   // review 18.11.2026: a retry id of the other kind would make apply() take this save for "already added"
+    $("chkClient").checked = k === "extra" ? false : state.addClient === true;
+    $("chkPlanned").checked = k === "extra";
+    render();
   }
   async function submit() {
     const text = $("inText").value, date = $("chkPlanned").checked ? "" : $("inDate").value || "";
     if (!String(text).trim()) { report(() => t("badText"), true); $("inText").focus(); return; }
     if (date && (!AV.realDay(date) || date > today())) { report(() => t("badDate"), true); return; }
     if ($("chkClient").checked && hasLink(text)) { report(() => t("noLink"), true); $("inText").focus(); return; }
+    const ex = state.kind === "extra" ? extraForm() : null;
+    if (ex && ex.qty && isNaN(AV.cleanQty(ex.qty))) { report(() => t("badQty"), true); $("inQty").focus(); return; }
+    if (ex && ex.link && !AV.cleanLink(ex.link)) { report(() => t("badLink"), true); $("inLink").focus(); return; }
+    if (ex && ex.page && !/^[1-9]\d{0,3}$/.test(ex.page)) { report(() => t("badPage"), true); $("inPage").focus(); return; }
     const editing = state.editing && state.items.find((x) => x.id === state.editing);
     if (state.editing && !editing) { report(() => t("gone"), true); resetForm(); render(); return; }
     const base = editing ? editing.photos.length : 0;
@@ -559,6 +683,12 @@
         if (date !== from.date) e.date = date;
         if ($("chkClient").checked !== from.client) e.client = $("chkClient").checked;
         if (photos.length) e.addPhotos = photos;
+        if (ex && AV.isExtra(editing)) {
+          // only the extra fields that changed (another person's status change meanwhile is kept)
+          const was = (state.editFrom && state.editFrom.extra) || editing.extra, cmp = AV.parse([{ id: "x", text: "x", extra: Object.assign({ no: 1 }, ex) }])[0].extra, patch = {};
+          for (const k of ["qty", "unit", "sheet", "page", "where", "link"]) if (cmp[k] !== was[k]) patch[k] = ex[k];
+          if (Object.keys(patch).length) e.extra = patch;
+        }
         if (Object.keys(e).length === 1) return true;   // nothing changed
         // "за клиента" unticked in the edit row: the same as "Скрий от клиента" (sweep 18.11.2026 (3)); the copies sit
         // in the month of the date the entry had when it was published.
@@ -570,6 +700,12 @@
         const copies = e.client === false || moved ? await clientCopies(editing, editing.photos) : [];
         const done = await change({ edit: e });
         if (done && copies.length) await withdrawCopies(copies);
+        return done;
+      }
+      if (ex) {
+        const id = state.addId, done = await change({ add: { id, text, date, client: $("chkClient").checked === true, photos, extra: ex } });
+        const it = done && state.items.find((x) => x.id === id);
+        if (it && AV.isExtra(it)) report(() => `${AV.extraNo(it.extra.no)} ${t("savedNo")}`);
         return done;
       }
       state.addClient = $("chkClient").checked === true;
@@ -585,6 +721,23 @@
     if (!x) return;
     if (act === "more") { state.actsOpen = state.actsOpen === id ? null : id; return renderList(); }
     if (act === "done") return withBusy(() => change({ edit: { id, date: today() } }));
+    if (act === "status" && AV.isExtra(x)) {
+      const st = el && el.dataset && el.dataset.st;
+      if (!AV.STATUSES.includes(st)) return;
+      const e = { id, extra: { status: st }, expect: { status: x.extra.status } };   // only from the status on screen
+      if (st === "done" && !x.date) e.date = today();   // done: dated today unless it has a day already
+      let copies = [];
+      if (st === "rejected") {
+        // the client stops getting it at the next publish; photo copies it already got are taken back (as Скрий)
+        const look = lookCopies(id, x, x.photos);
+        if (!(await ask(id, () => t("rejQ").replace("{no}", AV.extraNo(x.extra.no)) + look.note(), "rejGo", "cancel", true))) return;
+        copies = await look.done;
+      }
+      state.actsOpen = null;
+      const ok = await withBusy(() => change({ edit: e }));
+      if (ok && copies.length) await withdrawCopies(copies);
+      return;
+    }
     if (state.checking) return;   // a lookup is running: a second tap does not start another
     if (act === "client") {
       if (!x.client && hasLink(x.text)) { report(() => t("noLink"), true); return; }
@@ -596,7 +749,7 @@
         try { copies = await clientCopies(x, x.photos); } finally { state.checking = null; renderList(); }
       }
       if (copies.length && !(await ask(id, () => `${t("hideQ")}\n${publishedNote(copies)}`, "hideGo", "cancel", true))) return;
-      const ok = await withBusy(() => change({ edit: { id, client: !x.client } }));
+      const ok = await withBusy(() => change({ edit: { id, client: !x.client, expect: { client: x.client } } }));
       if (ok && copies.length) await withdrawCopies(copies);
       return;
     }
@@ -621,13 +774,19 @@
       return;
     }
     if (act === "edit") {
-      if (!state.editing && (String($("inText").value).trim() || state.picked.length) && !(await ask(id, () => t("unsaved"), "discard", "goBack", true))) {
+      const typed = String($("inText").value).trim() || state.picked.length || (state.kind === "extra" && ["inQty", "inSheet", "inPage", "inWhere", "inLink"].some((k) => String($(k).value || "").trim()));
+      if (!state.editing && typed && !(await ask(id, () => t("unsaved"), "discard", "goBack", true))) {
         $("inText").focus();   // "Върни се": back to the typed entry
         if ($("form").scrollIntoView) $("form").scrollIntoView({ block: "nearest" });
         return;
       }
-      if (!state.editing) state.addClient = $("chkClient").checked;
-      state.editing = id; state.editFrom = { text: x.text, date: x.date, client: x.client };
+      if (!state.editing && state.kind === "act") state.addClient = $("chkClient").checked;
+      state.editing = id; state.editFrom = { text: x.text, date: x.date, client: x.client, extra: x.extra ? Object.assign({}, x.extra) : null };
+      if (!state.kindBefore) state.kindBefore = state.kind;
+      state.kind = AV.isExtra(x) ? "extra" : "act";
+      const xe = x.extra || {};
+      $("inQty").value = xe.qty == null ? "" : String(xe.qty); $("selUnit").value = xe.unit || ""; $("inSheet").value = xe.sheet || "";
+      $("inPage").value = xe.page ? String(xe.page) : ""; $("inWhere").value = xe.where || ""; $("inLink").value = xe.link || "";
       setPicked([]); state.uploaded = new Map(); $("inPhotos").value = ""; state.actsOpen = null;
       $("inText").value = x.text; $("inDate").value = x.date || today(); $("chkPlanned").checked = !x.date; $("chkClient").checked = x.client === true;
       render();
@@ -657,6 +816,35 @@
     $("viewerImg").src = url; $("viewer").hidden = false;
   }
 
+  // ---------- the register: CSV and print (staff) ----------
+  const regLabels = () => ({ lang, head: ["hNo", "hDate", "hWork", "hStatus", "hSince", "hQty", "hUnit", "hSheet", "hPage", "hWhere", "hLink", "hClient"].map(t),
+    status: Object.fromEntries(AV.STATUSES.map((k) => [k, t("st_" + k)])), unit: Object.fromEntries(Object.keys(AV.UNITS).map((k) => [k, unitText(k)])), yes: t("yes"), no: t("no") });
+  const fileSafe = (s) => String(s || "").replace(/[^\p{L}\p{N}._-]+/gu, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "project";
+  /** The register as a CSV file (Excel opens it with Cyrillic intact: BOM + ";"). */
+  function downloadCsv() {
+    const csv = AV.registerCsv(state.items, regLabels()), name = `DR-${fileSafe(state.project && state.project.name)}-${today()}.csv`;
+    window.lastCsv = { name, csv };   // the node tests read it (no download there)
+    const U = window.URL;
+    if (typeof Blob !== "function" || !U || !U.createObjectURL || !document.createElement) return;
+    const url = U.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })), a = document.createElement("a");
+    if (!a || typeof a.click !== "function") return;
+    a.href = url; a.download = name; a.rel = "noopener";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { a.remove(); U.revokeObjectURL(url); } catch {} }, 1000);
+  }
+  /** A printable list of the register (the shown status, or all): the browser's print dialog, "Save as PDF" for a file. */
+  function printRegister() {
+    const reg = AV.register(state.items), rows = reg.items.filter((x) => !state.stFilter || x.extra.status === state.stFilter).slice().reverse();
+    const sums = Object.keys(reg.done).map((u) => qtyText(reg.done[u], u));
+    const th = ["hNo", "hDate", "hWork", "hStatus", "hQty", "hSheet", "hWhere"].map((k) => `<th>${esc(t(k))}</th>`).join("");
+    const tr = (x) => `<tr><td>${esc(AV.extraNo(x.extra.no))}</td><td>${esc(x.date ? fmtDate(x.date) : t("open"))}</td><td>${esc(x.text)}</td>
+      <td>${esc(t("st_" + x.extra.status))}${x.extra.since ? `<br><span class="sub">${esc(fmtDate(x.extra.since))}</span>` : ""}</td><td>${esc(qtyText(x.extra.qty, x.extra.unit))}</td>
+      <td>${esc([x.extra.sheet, x.extra.page ? `${t("page")} ${x.extra.page}` : ""].filter(Boolean).join(" · "))}</td><td>${esc(x.extra.where)}</td></tr>`;
+    $("printReg").innerHTML = `<h1>${esc(t("regTitle"))}</h1><p class="sub">${esc([state.project && state.project.name, fmtDate(today()), state.stFilter ? t("stp_" + state.stFilter) : ""].filter(Boolean).join(" · "))}</p>
+      <table><thead><tr>${th}</tr></thead><tbody>${rows.map(tr).join("")}</tbody></table>${sums.length ? `<p>${esc(`${t("doneSum")}: ${sums.join(", ")}`)}</p>` : ""}`;
+    if (typeof window.print === "function") setTimeout(() => { try { window.print(); } catch (e) { console.warn("print", e); } }, 100);
+  }
+
   // ---------- events ----------
   $("btnSave").onclick = () => guarded(submit);
   $("btnCancel").onclick = () => { resetForm(); render(); };
@@ -676,6 +864,14 @@
   $("inMore").onchange = (e) => guarded(() => addMorePhotos([...((e.target && e.target.files) || [])]));
   $("list").onclick = (e) => { const b = e.target && e.target.closest && e.target.closest("[data-act]"); return b ? guarded(() => action(b.dataset.act, b.dataset.id, b)) : undefined; };
   $("btnOlder").onclick = () => { state.weeks += WEEKS_SHOWN; renderList(); };
+  $("btnKindAct").onclick = () => setKind("act");
+  $("btnKindExtra").onclick = () => setKind("extra");
+  $("btnViewAll").onclick = () => { state.view = "all"; state.stFilter = ""; renderList(); };
+  $("btnViewExtra").onclick = () => { state.view = "extra"; renderList(); };
+  $("regChips").onclick = (e) => { const b = e.target && e.target.closest && e.target.closest("[data-st]"); if (b) { state.stFilter = b.dataset.st || ""; renderList(); } };
+  $("btnCsv").onclick = () => guarded(downloadCsv);
+  $("btnPrint").onclick = () => guarded(printRegister);
+  for (const id of ["inQty", "inSheet", "inPage", "inWhere", "inLink"]) $(id).onkeydown = key;
   $("btnViewerClose").onclick = () => { $("viewer").hidden = true; $("viewerImg").src = ""; };
   $("viewer").onclick = () => $("btnViewerClose").onclick();   // a tap anywhere closes (the photo fills a phone)
   document.onkeydown = (e) => { if (e.key === "Escape" && !$("viewer").hidden) $("btnViewerClose").onclick(); };
