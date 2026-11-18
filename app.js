@@ -96,6 +96,7 @@
     stp_done: ["Изпълнени", "Done"], stp_rejected: ["Отказани", "Rejected"],
     go_approved: ["Одобри", "Approve"], go_doing: ["Започната", "Started"], go_done: ["Изпълнена", "Done"], go_pending: ["Върни за одобрение", "Back to approval"],
     go_rejected: ["Откажи работата", "Reject the work"],
+    keepIt: ["Не, остави я", "No, keep it"],
     rejQ: ["Да откажа ли {no}? Номерът остава в регистъра.", "Reject {no}? The number stays in the register."], rejGo: ["Потвърди: откажи", "Confirm: reject"],
     openConnect: ["Отвори в Connect", "Open in Connect"], openConnectT: ["Отваря отбелязания чертеж в Connect (нов раздел)", "Opens the marked drawing in Connect (new tab)"],
     viewAll: ["Всички", "All"], viewExtra: ["Допълнителни работи", "Additional works"], allStatus: ["всички", "all"],
@@ -794,7 +795,7 @@
       if (st === "rejected") {
         // the client stops getting it at the next publish; photo copies it already got are taken back (as Скрий)
         const look = lookCopies(id, x, x.photos);
-        if (!(await ask(id, () => t("rejQ").replace("{no}", AV.extraNo(x.extra.no)) + look.note(), "rejGo", "cancel", true))) return;
+        if (!(await ask(id, () => t("rejQ").replace("{no}", AV.extraNo(x.extra.no)) + look.note(), "rejGo", "keepIt", true))) return;
         copies = await look.done;
       }
       state.actsOpen = null;
